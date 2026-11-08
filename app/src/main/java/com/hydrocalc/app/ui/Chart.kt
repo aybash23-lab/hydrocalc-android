@@ -69,6 +69,9 @@ fun LossChart(
             .height(280.dp)
     ) {
         if (points.size < 2) return@Canvas
+        // Для рисования текстом android.graphics.Paint нужен нативный холст:
+        // DrawScope не имеет свойства nativeCanvas, поэтому берём его у Compose-канвы.
+        val androidCanvas = drawContext.canvas.nativeCanvas
         val padLeft = with(density) { 56.dp.toPx() }
         val padRight = with(density) { 16.dp.toPx() }
         val padTop = with(density) { 26.dp.toPx() }
@@ -95,13 +98,13 @@ fun LossChart(
         val axisColor = Color(0xFF9AA3AD).toArgb()
         labelPaint.textAlign = android.graphics.Paint.Align.CENTER
         labelPaint.color = axisColor
-        nativeCanvas.drawText(
+        androidCanvas.drawText(
             "внутренний диаметр, мм",
             (left + right) / 2f, size.height - 6f, labelPaint
         )
         titlePaint.textAlign = android.graphics.Paint.Align.LEFT
         titlePaint.color = Color(0xFF1A6BB5).toArgb()
-        nativeCanvas.drawText("ΔPпот", 4f, 16f, titlePaint)
+        androidCanvas.drawText("ΔPпот", 4f, 16f, titlePaint)
 
         // Горизонтальная сетка и подписи Y по «красивым» значениям давления
         val gridColor = Color(0xFFE4E8EC)
@@ -117,7 +120,7 @@ fun LossChart(
                 drawLine(gridColor, Offset(left, y), Offset(right, y), 1f)
                 labelPaint.textAlign = android.graphics.Paint.Align.RIGHT
                 labelPaint.color = tickTextColor
-                nativeCanvas.drawText(fmtPa(dpVal), left - 6f, y + 4f, labelPaint)
+                androidCanvas.drawText(fmtPa(dpVal), left - 6f, y + 4f, labelPaint)
             }
             exp++
         }
@@ -162,7 +165,7 @@ fun LossChart(
             val i = k * n / labelCount
             val p = points[i]
             labelPaint.color = velocityZoneColor(p.velocity).toArgb()
-            nativeCanvas.drawText(
+            androidCanvas.drawText(
                 p.diameterMm.toInt().toString(), xAt(i), bottom + 14f, labelPaint
             )
         }
@@ -190,11 +193,11 @@ fun LossChart(
                 else android.graphics.Paint.Align.LEFT
                 labelPaint.color = Color(0xFF114499).toArgb()
                 val ty = if (cy - 12f < top + 14f) cy + 22f else cy - 12f
-                nativeCanvas.drawText(text, cx + 9f, ty, labelPaint)
+                androidCanvas.drawText(text, cx + 9f, ty, labelPaint)
             } else {
                 labelPaint.textAlign = android.graphics.Paint.Align.CENTER
                 labelPaint.color = ZoneRed.toArgb()
-                nativeCanvas.drawText(
+                androidCanvas.drawText(
                     "текущая точка вне диапазона графика",
                     (left + right) / 2f, top + 12f, labelPaint
                 )
