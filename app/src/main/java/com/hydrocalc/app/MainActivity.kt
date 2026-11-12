@@ -58,6 +58,7 @@ import com.hydrocalc.app.calc.Roughness
 import com.hydrocalc.app.calc.TubeMaterial
 import com.hydrocalc.app.ui.ChartLegend
 import com.hydrocalc.app.ui.DropdownField
+import com.hydrocalc.app.ui.LocalLossesCheckbox
 import com.hydrocalc.app.ui.LossChart
 import com.hydrocalc.app.ui.NumberField
 import com.hydrocalc.app.ui.ResultRow
@@ -179,6 +180,7 @@ fun CalculatorScreen() {
     var roughness by remember { mutableStateOf(Roughness.STEEL_CAST_OLD_RUSTY) }
     var ksiText by remember { mutableStateOf("1.89") }
     var showAbout by remember { mutableStateOf(false) }
+    var localLosses by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
 
@@ -187,7 +189,8 @@ fun CalculatorScreen() {
         qText = qText, unit = unit,
         outerDiameterText = dText, wallThicknessText = sText,
         lengthText = lText, temperatureText = tText,
-        roughness = roughness, sumKsiText = ksiText
+        roughness = roughness, sumKsiText = ksiText,
+        localLosses = localLosses
     )
     val error = HydroCalculator.validate(inp)
     val result = if (error == null) HydroCalculator.compute(inp) else null
@@ -298,6 +301,12 @@ fun CalculatorScreen() {
                             onValueChange = { tText = it },
                             suffix = "°C",
                             modifier = Modifier.weight(1f)
+                        )
+                    }
+                                        if (method != Method.TEOR) {
+                        LocalLossesCheckbox(
+                            checked = localLosses,
+                            onCheckedChange = { localLosses = it }
                         )
                     }
                     if (method == Method.TEOR) {
