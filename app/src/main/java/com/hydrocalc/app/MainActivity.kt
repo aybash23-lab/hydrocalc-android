@@ -130,6 +130,9 @@ private fun resultRows(res: HydroCalculator.CalcResult): List<ResultRowData> {
     if (res.i1000 != null) {
         rows += ResultRowData("1000i, м вод. ст. на 1 км", fmtVal(res.i1000 ?: 0.0))
     }
+        if (res.localLosses) {
+        rows += ResultRowData("Надбавка на местные сопротивления", "+5%")
+    }
     rows += ResultRowData("Характеристика сопротивления, Па/(т/ч)²", fmtVal(res.sChar), emphasize = true)
     rows += ResultRowData("Потери давления, кгс/см²", fmtVal(res.dpKgfCm2), emphasize = true)
     rows += ResultRowData("Потери давления, Па", fmtVal(res.dpPa), emphasize = true)
