@@ -19,6 +19,12 @@ import kotlin.math.sqrt
  * Общее: ρ(t) = (−0.003·t² − 0.1511·t + 1003.1)/1000, т/м³
  *        v = 4q/(ρ·π·d²), м/с
  *        S = ΔP/(q·3600)², Па/(т/ч)²
+ *
+ * Надбавка на местные сопротивления (+5 %): методы Шевелева и СНиП
+ * дают только потери на трение по длине, местные сопротивления
+ * добавляются множителем 1.05 к полным потерям давления.
+ * В методе «Теория» местные потери уже учтены явно через Σζ,
+ * поэтому надбавка там не применяется.
  */
 object HydroCalculator {
 
@@ -29,6 +35,9 @@ object HydroCalculator {
     /** Диапазон скоростей, отображаемых на графике, м/с */
     const val V_CHART_MIN = 0.1
     const val V_CHART_MAX = 10.0
+
+    /** Множитель надбавки на местные сопротивления (галочка +5 %) */
+    const val LOCAL_LOSSES_FACTOR = 1.05
 
     // ------------------------------------------------------------------
     // Входные данные
@@ -44,7 +53,8 @@ object HydroCalculator {
         val lengthText: String = "100",
         val temperatureText: String = "15",
         val roughness: Roughness = Roughness.STEEL_CAST_OLD_RUSTY,
-        val sumKsiText: String = "1.89"
+        val sumKsiText: String = "1.89",
+        val localLosses: Boolean = false
     )
 
     // ------------------------------------------------------------------
@@ -77,6 +87,7 @@ object HydroCalculator {
         val dpKgfCm2: Double,       // потери давления, кгс/см²
         val dpPa: Double,           // потери давления, Па
         val dpMeters: Double,       // потери давления, м вод. ст.
+        val localLosses: Boolean,   // надбавка +5 % на местные сопротивления учтена
         val warnings: List<String>
     )
 
@@ -132,7 +143,8 @@ object HydroCalculator {
         val tMid = parse(inp.temperatureText) ?: 0.0
         val sumKsi = if (inp.method == Method.TEOR) parse(inp.sumKsiText) ?: 0.0 else 0.0
         return computeParsed(
-            inp.method, inp.material, q, dInner, l, tMid, inp.roughness.mm, sumKsi
+            inp.method, inp.material, q, dInner, l, tMid, inp.roughness.mm, sumKsi,
+            inp.localLosses
         )
     }
 
@@ -141,6 +153,8 @@ object HydroCalculator {
      * Формулы и порядок операций соответствуют функции calc() исходного калькулятора.
      *
      * @param innerDiameterM внутренний диаметр, м (для графика можно передать произвольный)
+     * @param localLosses учитывать надбавку +5 % на местные сопротивления
+     * (только для методов Шевелева и СНиП)
      */
     fun computeParsed(
         method: Method,
@@ -150,7 +164,8 @@ object HydroCalculator {
         lengthM: Double,
         tMid: Double,
         roughnessMm: Double,
-        sumKsi: Double
+        sumKsi: Double,
+        localLosses: Boolean = false
     ): CalcResult {
         val ro = waterDensity(tMid)
         val v = 4.0 * qM3s / ro / PI / innerDiameterM.pow(2)
@@ -217,6 +232,12 @@ object HydroCalculator {
             }
         }
 
+        // Надбавка на местные сопротивления (+5 %): применяется только к методам,
+        // которые считают трение по длине без местных потерь (Шевелев, СНиП).
+        val kLocal = if (method != Method.TEOR && localLosses) LOCAL_LOSSES_FACTOR else 1.0
+        dpPa *= kLocal
+        dpKgf *= kLocal
+
         val s = dpPa / (qM3s * 3600.0).pow(2)
         val dpMeters = round(dpPa / 9807.0 * 1000.0) / 1000.0
 
@@ -255,6 +276,7 @@ object HydroCalculator {
             dpKgfCm2 = dpKgf,
             dpPa = dpPa,
             dpMeters = dpMeters,
+            localLosses = kLocal > 1.0,
             warnings = warnings
         )
     }
@@ -287,7 +309,8 @@ object HydroCalculator {
         for (i in 0..steps) {
             val d = dLeft - (dLeft - dRight) * i / steps
             val r = computeParsed(
-                inp.method, inp.material, q, d, l, tMid, inp.roughness.mm, sumKsi
+                inp.method, inp.material, q, d, l, tMid, inp.roughness.mm, sumKsi,
+                inp.localLosses
             )
             list.add(ChartPoint(d * 1000.0, r.dpPa, r.velocity, r.reynolds))
         }
